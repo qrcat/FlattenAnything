@@ -1,6 +1,6 @@
 # Flatten Anything: Unsupervised Neural Surface Parameterization (NeurIPS-2024)
 
-**We lifts FAM onto the mesh by detecting seams and generating per-corner UVs, resulting in a realizable, seam-aware UV mapping.**
+**We lifts FAM onto the mesh by detecting seams and generating per-corner UVs, resulting in a realizable, seam-aware UV mapping. Please refer [DOCS](UNWRAP.md).**
 
 This is the official implementation of **[[Flatten Anything Model (FAM)](https://arxiv.org/abs/2405.14633)]**, an unsupervised neural architecture for global free-boundary surface parameterization.
 
