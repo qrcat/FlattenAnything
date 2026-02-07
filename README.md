@@ -30,7 +30,7 @@ In case that there are some problems with your input mesh, you can use the ```cl
 
 **Training:** Specify the number of input points and training iterations.
 ```bash
-python train_mesh.py "./example/input_model/test_model.obj" "./exported" 10000 10000
+python train_mesh.py "./example/input_model/test_model.obj" "./exported" 1000 1000
 ```
 For unoriented point clouds, you can simply input ```normals=None``` into the ```train_fam()``` and ```test_fam()``` functions in ```util/workflow.py```, which will disable the calculation of the normal cosine similarity loss term.
 

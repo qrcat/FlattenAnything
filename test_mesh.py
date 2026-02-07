@@ -27,11 +27,73 @@ def main():
     print(f"{num_verts=}, {num_faces=}")
     
     if args.input_format == "mesh_verts":
+        f_pos_c = vtx_pos[tri_vid].mean(axis=1, keepdims=True)
+        f_nor_c = vtx_nor[tri_vid].mean(axis=1, keepdims=True)
+        f_pos_i = (vtx_pos[tri_vid] + f_pos_c) / 2
+        f_nor_i = (vtx_nor[tri_vid] + f_nor_c) / 2
+
+        vtx_pos = np.concatenate([vtx_pos, f_pos_c.reshape(-1, 3), f_pos_i.reshape(-1, 3)], axis=0)
+        vtx_nor = np.concatenate([vtx_nor, f_nor_c.reshape(-1, 3), f_nor_i.reshape(-1, 3)], axis=0)
+
         vtx_uv_image_list, vtx_uv, vtx_edge, vtx_checker_colors = test_fam(vtx_pos, vtx_nor, args.load_ckpt_path, args.load_check_map_path, args.export_folder)
         one_row_export_image_list(vtx_uv_image_list, ["Q_hat", "Q_hat_cycle", "Q"], 4.0, 8.0, save_uv_image_path)
         if vtx_edge is not None:
             save_ply_point_cloud(save_edge_points_path, vtx_edge)
         save_ply_point_cloud(save_textured_points_path, vtx_pos, vtx_checker_colors, vtx_nor)
+
+        # normalize uv
+        vtx_uv = (vtx_uv - vtx_uv.min(0)) / (vtx_uv.max(0) - vtx_uv.min(0) + 1e-5)
+
+        eps = 1e-2
+
+        face_uv_c = vtx_uv[num_verts:num_verts+num_faces]
+        face_uv_i = vtx_uv[num_verts+num_faces:]
+        
+        faces_uvs = []
+        addon_uvs = []
+        for i in range(num_faces):
+            face = tri_vid[i]
+
+            if np.linalg.norm(vtx_uv[face].mean(0) - face_uv_c[i]) > eps:
+                v_0, v_1, v_2 = face
+                
+                if np.linalg.norm((face_uv_c[i] + vtx_uv[face[0]]) / 2 - face_uv_i[3*i+0] ) > eps:
+                    v_0 = len(addon_uvs) + num_verts
+                    if np.linalg.norm(face_uv_c[i] - face_uv_i[3*i+0]) < eps:
+                        addon_uvs.append(face_uv_i[3*i+0])
+                    else:
+                        addon_uvs.append(face_uv_c[i])
+                if np.linalg.norm((face_uv_c[i] + vtx_uv[face[1]]) / 2 - face_uv_i[3*i+1] ) > eps:
+                    v_1 = len(addon_uvs) + num_verts
+                    if np.linalg.norm(face_uv_c[i] - face_uv_i[3*i+1]) < eps:
+                        addon_uvs.append(face_uv_i[3*i+1])
+                    else:
+                        addon_uvs.append(face_uv_c[i])
+                if np.linalg.norm((face_uv_c[i] + vtx_uv[face[2]]) / 2 - face_uv_i[3*i+2] ) > eps:
+                    v_2 = len(addon_uvs) + num_verts
+                    if np.linalg.norm(face_uv_c[i] - face_uv_i[3*i+2]) < eps:
+                        addon_uvs.append(face_uv_i[3*i+2])
+                    else:
+                        addon_uvs.append(face_uv_c[i])
+
+                faces_uvs.append(np.array([v_0, v_1, v_2]))
+            else:
+                faces_uvs.append(face)
+        
+        out_uvs = np.concatenate([vtx_uv[:num_verts], np.array(addon_uvs)], axis=0)
+        faces_uvs = np.array(faces_uvs)
+
+        # write obj file
+        with open(args.export_folder + "/UV.obj", "w") as f:
+            
+            for i in range(num_verts):
+                f.write(f"v {vtx_pos[i, 0]} {vtx_pos[i, 1]} {vtx_pos[i, 2]}\n")
+            for i in range(len(out_uvs)):
+                f.write(f"vn {vtx_nor[i, 0]} {vtx_nor[i, 1]} {vtx_nor[i, 2]}\n")
+            for i in range(len(out_uvs)):
+                f.write(f"vt {out_uvs[i, 0]} {out_uvs[i, 1]}\n")
+            for i in range(len(faces_uvs)):
+                f.write(f"f {tri_vid[i, 0]+1}/{faces_uvs[i, 0]+1}/{tri_vid[i, 0]+1} {tri_vid[i, 1]+1}/{faces_uvs[i, 1]+1}/{tri_vid[i, 1]+1} {tri_vid[i, 2]+1}/{faces_uvs[i, 2]+1}/{tri_vid[i, 2]+1}\n")
         
     if args.input_format == "sampled_points":
         poisson_points, poisson_normals = sample_points_from_mesh_approx(vtx_pos, tri_vid, args.N_poisson_approx, vtx_nor)
