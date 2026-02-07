@@ -1,6 +1,6 @@
 from util.func import *
 from util.workflow import test_fam
-
+from numpy.linalg import norm as dist
 
 
 def main():
@@ -27,13 +27,19 @@ def main():
     print(f"{num_verts=}, {num_faces=}")
     
     if args.input_format == "mesh_verts":
+        # add barycenter points
         f_pos_c = vtx_pos[tri_vid].mean(axis=1, keepdims=True)
         f_nor_c = vtx_nor[tri_vid].mean(axis=1, keepdims=True)
+        # add interpolated points
         f_pos_i = (vtx_pos[tri_vid] + f_pos_c) / 2
         f_nor_i = (vtx_nor[tri_vid] + f_nor_c) / 2
 
         vtx_pos = np.concatenate([vtx_pos, f_pos_c.reshape(-1, 3), f_pos_i.reshape(-1, 3)], axis=0)
-        vtx_nor = np.concatenate([vtx_nor, f_nor_c.reshape(-1, 3), f_nor_i.reshape(-1, 3)], axis=0)
+        vtx_nor = np.concatenate([
+            vtx_nor, 
+            normalize_normals(f_nor_c.reshape(-1, 3)), 
+            normalize_normals(f_nor_i.reshape(-1, 3))
+        ], axis=0)
 
         vtx_uv_image_list, vtx_uv, vtx_edge, vtx_checker_colors = test_fam(vtx_pos, vtx_nor, args.load_ckpt_path, args.load_check_map_path, args.export_folder)
         one_row_export_image_list(vtx_uv_image_list, ["Q_hat", "Q_hat_cycle", "Q"], 4.0, 8.0, save_uv_image_path)
@@ -44,42 +50,45 @@ def main():
         # normalize uv
         vtx_uv = (vtx_uv - vtx_uv.min(0)) / (vtx_uv.max(0) - vtx_uv.min(0) + 1e-5)
 
-        eps = 1e-2
+        eps, beta, gamma = 0.01, 0.5, 0.1
 
         face_uv_c = vtx_uv[num_verts:num_verts+num_faces]
         face_uv_i = vtx_uv[num_verts+num_faces:]
-        
+
         faces_uvs = []
         addon_uvs = []
         for i in range(num_faces):
             face = tri_vid[i]
-
-            if np.linalg.norm(vtx_uv[face].mean(0) - face_uv_c[i]) > eps:
+            area = np.cross(vtx_uv[face[1]] - vtx_uv[face[0]], vtx_uv[face[2]] - vtx_uv[face[0]])
+            
+            # check if barycenter uv is close to interpolated uv
+            if area > 0 or dist(vtx_uv[face].mean(0) - face_uv_c[i]) > eps:
                 v_0, v_1, v_2 = face
-                
-                if np.linalg.norm((face_uv_c[i] + vtx_uv[face[0]]) / 2 - face_uv_i[3*i+0] ) > eps:
+                # find seam
+                if dist((face_uv_c[i] + vtx_uv[face[0]]) / 2 - face_uv_i[3*i+0] ) > eps * beta:
                     v_0 = len(addon_uvs) + num_verts
-                    if np.linalg.norm(face_uv_c[i] - face_uv_i[3*i+0]) < eps:
-                        addon_uvs.append(face_uv_i[3*i+0])
+                    if dist(face_uv_c[i] - face_uv_i[3*i+0]) < eps * gamma: # seam near vtx_uv[face[0]]
+                        addon_uvs.append(face_uv_c[i] + (face_uv_i[3*i+0] - face_uv_c[i]) * 2.0)
                     else:
-                        addon_uvs.append(face_uv_c[i])
-                if np.linalg.norm((face_uv_c[i] + vtx_uv[face[1]]) / 2 - face_uv_i[3*i+1] ) > eps:
+                        addon_uvs.append(face_uv_c[i]) # seam near barycenter
+                if dist((face_uv_c[i] + vtx_uv[face[1]]) / 2 - face_uv_i[3*i+1] ) > eps * beta:
                     v_1 = len(addon_uvs) + num_verts
-                    if np.linalg.norm(face_uv_c[i] - face_uv_i[3*i+1]) < eps:
-                        addon_uvs.append(face_uv_i[3*i+1])
+                    if dist(face_uv_c[i] - face_uv_i[3*i+1]) < eps * gamma:
+                        addon_uvs.append(face_uv_c[i] + (face_uv_i[3*i+1] - face_uv_c[i]) * 2.0)
                     else:
                         addon_uvs.append(face_uv_c[i])
-                if np.linalg.norm((face_uv_c[i] + vtx_uv[face[2]]) / 2 - face_uv_i[3*i+2] ) > eps:
+                if dist((face_uv_c[i] + vtx_uv[face[2]]) / 2 - face_uv_i[3*i+2] ) > eps * beta:
                     v_2 = len(addon_uvs) + num_verts
-                    if np.linalg.norm(face_uv_c[i] - face_uv_i[3*i+2]) < eps:
-                        addon_uvs.append(face_uv_i[3*i+2])
+                    if dist(face_uv_c[i] - face_uv_i[3*i+2]) < eps * gamma:
+                        addon_uvs.append(face_uv_c[i] + (face_uv_i[3*i+2] - face_uv_c[i]) * 2.0)
                     else:
                         addon_uvs.append(face_uv_c[i])
 
                 faces_uvs.append(np.array([v_0, v_1, v_2]))
             else:
                 faces_uvs.append(face)
-        
+        print(f"Extand {len(addon_uvs)} addon uvs.")
+
         out_uvs = np.concatenate([vtx_uv[:num_verts], np.array(addon_uvs)], axis=0)
         faces_uvs = np.array(faces_uvs)
 
@@ -88,7 +97,7 @@ def main():
             
             for i in range(num_verts):
                 f.write(f"v {vtx_pos[i, 0]} {vtx_pos[i, 1]} {vtx_pos[i, 2]}\n")
-            for i in range(len(out_uvs)):
+            for i in range(num_verts):
                 f.write(f"vn {vtx_nor[i, 0]} {vtx_nor[i, 1]} {vtx_nor[i, 2]}\n")
             for i in range(len(out_uvs)):
                 f.write(f"vt {out_uvs[i, 0]} {out_uvs[i, 1]}\n")

@@ -1,5 +1,7 @@
 # Flatten Anything: Unsupervised Neural Surface Parameterization (NeurIPS-2024)
 
+**We lifts FAM onto the mesh by detecting seams and generating per-corner UVs, resulting in a realizable, seam-aware UV mapping.**
+
 This is the official implementation of **[[Flatten Anything Model (FAM)](https://arxiv.org/abs/2405.14633)]**, an unsupervised neural architecture for global free-boundary surface parameterization.
 
 <p align="center"> <img src="asset/examples.png" width="75%"> </p>
@@ -30,13 +32,15 @@ In case that there are some problems with your input mesh, you can use the ```cl
 
 **Training:** Specify the number of input points and training iterations.
 ```bash
-python train_mesh.py "./example/input_model/test_model.obj" "./exported" 1000 1000
+python train_mesh.py "./example/input_model/test_model.obj" "./exported" 10000 1000
 ```
 For unoriented point clouds, you can simply input ```normals=None``` into the ```train_fam()``` and ```test_fam()``` functions in ```util/workflow.py```, which will disable the calculation of the normal cosine similarity loss term.
 
 **Testing**
 ```bash
 python test_mesh.py "./example/input_model/test_model.obj" "./exported/test_model/fam.pth" "./example/checker_map/20x20.png" "./exported/test_model" "mesh_verts"
+python test_mesh.py "./example/input_model/test_model_500.obj" "./exported/test_model/fam.pth" "./example/checker_map/20x20.png" "./exported/test_model" "mesh_verts"
+python test_mesh.py "./example/input_model/test_model_20000.obj" "./exported/test_model/fam.pth" "./example/checker_map/20x20.png" "./exported/test_model" "mesh_verts"
 ```
 You can also perform testing on points sampled from mesh by specifying the ```input_format``` and ```--N_poisson_approx``` arguments.
 
