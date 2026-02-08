@@ -47,15 +47,17 @@ Our method relies on the following assumptions:
 Given a triangular mesh with vertices ( V ) and faces ( F ), we enrich the input point set by introducing two types of auxiliary samples per face:
 
 * **Face barycenter points**
-  [
+
+  $$
   \mathbf{p}_c = \frac{1}{3} (\mathbf{p}_0 + \mathbf{p}_1 + \mathbf{p}_2)
-  ]
+  $$
 
 * **Interpolated edge–barycenter points**
-  For each vertex ( \mathbf{p}*k ) of a face:
-  [
-  \mathbf{p}*{i,k} = \frac{1}{2}(\mathbf{p}_k + \mathbf{p}_c)
-  ]
+  
+  For each vertex $ \mathbf{p}_k $ of a face:
+  $$
+  \mathbf{p}_{i,k} = \frac{1}{2}(\mathbf{p}_k + \mathbf{p}_c)
+  $$
 
 Normals are generated analogously and normalized. These auxiliary points are appended to the original vertex list.
 
@@ -90,8 +92,8 @@ All predicted UVs are normalized into a unit square via min–max normalization 
 For each face, we extract:
 
 * vertex UVs,
-* barycenter UV ( \mathbf{u}_c ),
-* three interpolated UVs ( \mathbf{u}*{i,0}, \mathbf{u}*{i,1}, \mathbf{u}_{i,2} ).
+* barycenter UV $ \mathbf{u}_c $,
+* three interpolated UVs $ \mathbf{u}_{i,0}, \mathbf{u}_{i,1}, \mathbf{u}_{i,2} $.
 
 We perform two consistency checks:
 
@@ -100,10 +102,12 @@ We perform two consistency checks:
 
 2. **Interpolation consistency check**
    For each vertex ( k ), we compare:
-   [
-   \frac{\mathbf{u}_c + \mathbf{u}*k}{2} \quad \text{vs.} \quad \mathbf{u}*{i,k}
-   ]
-   Deviations beyond a threshold (( \varepsilon \cdot \beta )) are treated as seam indicators.
+
+   $$
+   \frac{\mathbf{u}_c + \mathbf{u}_k}{2} \quad \text{vs.} \quad \mathbf{u}_{i,k}
+   $$
+
+   Deviations beyond a threshold ($ \varepsilon \cdot \beta $) are treated as seam indicators.
 
 ---
 
@@ -115,7 +119,7 @@ When a seam is detected on a face:
 * The new UV is estimated either:
 
   * by extrapolating from the barycenter towards the interpolated UV, or
-  * by duplicating the barycenter UV, depending on proximity (( \gamma ) threshold).
+  * by duplicating the barycenter UV, depending on proximity ($ \gamma $ threshold).
 
 This effectively converts a single per-vertex UV into **multiple per-corner UVs**, resolving discontinuities while preserving mesh topology.
 
