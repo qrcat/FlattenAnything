@@ -1,3 +1,5 @@
 exported
 
 *.pyc
+example/input_model/uv_islands
+example/input_model/smplx_uv.obj

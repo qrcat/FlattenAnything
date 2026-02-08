@@ -89,7 +89,7 @@ def main():
                 faces_uvs.append(face)
         print(f"Extand {len(addon_uvs)} addon uvs.")
 
-        out_uvs = np.concatenate([vtx_uv[:num_verts], np.array(addon_uvs)], axis=0)
+        out_uvs = np.concatenate([vtx_uv[:num_verts], np.array(addon_uvs).reshape(-1, 2)], axis=0)
         faces_uvs = np.array(faces_uvs)
 
         # write obj file
