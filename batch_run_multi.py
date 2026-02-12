@@ -15,7 +15,7 @@ def worker(queue, count, device) -> None:
             break
 
         basename = os.path.basename(path).split('.')[0]
-        os.system(f'CUDA_VISIBLE_DEVICES={device} python train_mesh.py "{path}" "./exported" 10000 1000')
+        os.system(f'CUDA_VISIBLE_DEVICES={device} python train_mesh.py "{path}" "./exported" 10000 10000')
         os.system(f'CUDA_VISIBLE_DEVICES={device} python test_mesh.py "{path}" "./exported/{basename}/fam.pth" "./example/checker_map/20x20.png" "./exported/{basename}" "mesh_verts"')
 
         with open(f"./exported/{basename}/meta.json", 'w') as f:
