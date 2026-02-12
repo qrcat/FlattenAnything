@@ -49,15 +49,22 @@ def fetch_data(path):
         raise ValueError(f"Invalid path: {path}")
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--data', type=str, default='test.json')
+    parser.add_argument('--local_rank', type=int, default=0)
+    parser.add_argument('--world_size', type=int, default=1)
+    parser.add_argument('--workers', type=int, default=8)
     
-    # data = fetch_data('example/input_model/uv_islands')
-    data = fetch_data('test.json')
+    args = parser.parse_args()
+    data = fetch_data(args.data)
+
+    workers = args.workers
+    local_rank = args.local_rank
+    world_size = args.world_size
 
     queue = multiprocessing.JoinableQueue()
     count = multiprocessing.Value("i", 0)
     processes = []
-
-    workers = 32
 
     # use parallel processing
     for worker_i in range(workers):
@@ -69,7 +76,7 @@ if __name__ == '__main__':
         process.start()
         processes.append(process)
 
-    for path in data:
+    for path in data[local_rank::world_size]:
         queue.put(path)
 
     start_time = time.time()
